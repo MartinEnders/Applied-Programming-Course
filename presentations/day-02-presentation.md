@@ -426,7 +426,7 @@ cd note-api
 
 ```powershell
 uv init
-uv add fastapi
+uv add fastapi[standard]
 ```
 
 **Create main.py and start coding!**
@@ -496,18 +496,14 @@ class Note(BaseModel):
 
 ## Step 5: Set Up Storage
 
-**In-memory storage:**
+**File path for persistence:**
 
 ```python
-# Global variables
-notes_db = []
-note_id_counter = 1
-
 # File path for persistence
-NOTES_FILE = Path("notes.json")
+NOTES_FILE = Path("data/notes.json")
 ```
 
-**Data lives here while server runs**
+**We'll load and save notes from this file. The load/save functions will manage the data!**
 
 ---
 
@@ -515,20 +511,21 @@ NOTES_FILE = Path("notes.json")
 
 ```python
 @app.post("/notes", status_code=201)
-def create_note(note: NoteCreate):
+def create_note(note: NoteCreate) -> Note:
     """Create a new note"""
-    global note_id_counter
     
+    notes_db, note_id_counter = load_notes()
+
     new_note = Note(
         id=note_id_counter,
         title=note.title,
         content=note.content,
-        created_at=datetime.now().isoformat()
+        created_at=datetime.now(timezone.utc).isoformat()
     )
-    
+
     notes_db.append(new_note)
-    note_id_counter += 1
-    
+    save_notes(notes_db)
+
     return new_note
 ```
 
@@ -541,11 +538,11 @@ def create_note(note: NoteCreate):
 ```python
 @app.post("/notes", status_code=201)  # POST method, return 201
 def create_note(note: NoteCreate):    # Function takes NoteCreate model
-    global note_id_counter            # Access global counter
+    notes_db, note_id_counter = load_notes()  # Load current notes and counter
     
     new_note = Note(...)              # Create Note with ID
     notes_db.append(new_note)         # Add to storage
-    note_id_counter += 1              # Increment counter
+    save_notes(notes_db)              # Save to file
     
     return new_note                   # Return created note
 ```
@@ -581,8 +578,9 @@ uv run fastapi dev
 
 ```python
 @app.get("/notes")
-def list_notes():
-    """Get all notes"""
+def list_notes() -> list[Note]:
+    """Get a list of all notes"""
+    notes_db, _ = load_notes()
     return notes_db
 ```
 
@@ -610,6 +608,11 @@ def list_notes():
 
 ---
 
+## Starting from here homework
+
+---
+
+
 ## Step 10: Create GET /notes/{note_id}
 
 **Get specific note by ID:**
@@ -618,6 +621,7 @@ def list_notes():
 @app.get("/notes/{note_id}")
 def get_note(note_id: int):
     """Get a specific note by ID"""
+    notes_db, _ = load_notes()
     for note in notes_db:
         if note.id == note_id:
             return note
@@ -706,9 +710,12 @@ Start server → Load from file → Notes still there! 😊
 **Add this function:**
 
 ```python
+NOTES_FILE = Path("data/notes.json")
+
 def load_notes():
-    """Load notes from JSON file"""
-    global notes_db, note_id_counter
+    """Load notes from JSON file and return notes list and next ID counter"""
+    notes_db = []
+    note_id_counter = 1
     
     if NOTES_FILE.exists():
         with open(NOTES_FILE, 'r') as f:
@@ -718,9 +725,11 @@ def load_notes():
             # Set counter to max ID + 1
             if notes_db:
                 note_id_counter = max(note.id for note in notes_db) + 1
+    
+    return notes_db, note_id_counter
 ```
 
-**Reads JSON file and recreates Note objects**
+**Reads JSON file, recreates Note objects, and returns the loaded data**
 
 ---
 
@@ -729,30 +738,29 @@ def load_notes():
 **Add this function:**
 
 ```python
-def save_notes():
-    """Save notes to JSON file"""
+def save_notes(notes_db):
+    """Save notes to JSON file after each change"""
+    # Ensure data directory exists
+    NOTES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    
     with open(NOTES_FILE, 'w') as f:
         # Convert Note objects to dicts
         notes_data = [note.dict() for note in notes_db]
         json.dump(notes_data, f, indent=2)
 ```
 
-**Converts Note objects to JSON and writes to file**
+**Converts Note objects to JSON, creates directory if needed, and writes to file**
 
 ---
 
-## Step 14: Load on Startup
+## Step 14: Load on every API-Call
 
-**Add after creating the app:**
 
-```python
-app = FastAPI(...)
+### Load existing notes whenever you need them
 
-# Load existing notes when server starts
-load_notes()
 ```
-
-**Now notes are loaded automatically when server starts!**
+notes_db, note_id_counter = load_notes()
+```
 
 ---
 
@@ -762,20 +770,21 @@ load_notes()
 
 ```python
 @app.post("/notes", status_code=201)
-def create_note(note: NoteCreate):
-    global note_id_counter
+def create_note(note: NoteCreate) -> Note:
+    """Create a new note"""
     
+    notes_db, note_id_counter = load_notes()
+
     new_note = Note(
         id=note_id_counter,
         title=note.title,
         content=note.content,
-        created_at=datetime.now().isoformat()
+        created_at=datetime.now(timezone.utc).isoformat()
     )
-    
+
     notes_db.append(new_note)
-    note_id_counter += 1
-    
-    save_notes()  # ← ADD THIS LINE
+    save_notes(notes_db)
+
     return new_note
 ```
 
@@ -787,7 +796,7 @@ def create_note(note: NoteCreate):
 
 1. Start server: `uv run fastapi dev`
 2. Create a note via POST
-3. Check: `notes.json` file should exist!
+3. Check: `data/notes.json` file should exist!
 4. Stop server (Ctrl+C)
 5. Start server again
 6. GET /notes → Your note is still there! 🎉
@@ -796,9 +805,9 @@ def create_note(note: NoteCreate):
 
 ---
 
-## Look at notes.json File
+## Look at data/notes.json File
 
-**Open notes.json in VS Code:**
+**Open data/notes.json in VS Code:**
 
 ```json
 [
@@ -821,7 +830,7 @@ def create_note(note: NoteCreate):
 
 ---
 
-## Complete Code Structure
+## Complete Code Structure for Day 2
 
 ```python
 # Imports
@@ -832,23 +841,22 @@ from fastapi import FastAPI, HTTPException
 class NoteCreate(BaseModel): ...
 class Note(BaseModel): ...
 
-# Storage
-notes_db = []
-note_id_counter = 1
-NOTES_FILE = Path("notes.json")
+# Storage setup
+NOTES_FILE = Path("data/notes.json")
 
 # File functions
-def load_notes(): ...
-def save_notes(): ...
+def load_notes(): ...  # Returns notes_db, note_id_counter
+def save_notes(notes_db): ...  # Takes notes_db parameter
 
 # App
 app = FastAPI(...)
-load_notes()  # Load on startup
+notes_db, note_id_counter = load_notes()  # Load on startup
 
 # Endpoints
 @app.post("/notes"): ...
 @app.get("/notes"): ...
 @app.get("/notes/{note_id}"): ...
+... Plus Homework
 ```
 
 ---
@@ -912,7 +920,7 @@ class Note(BaseModel):
 ```python
 @app.post("/notes", status_code=201)
 def create_note(note: NoteCreate):
-    global note_id_counter
+    ...
     
     new_note = Note(
         id=note_id_counter,
@@ -921,10 +929,7 @@ def create_note(note: NoteCreate):
         category=note.category,  # ← ADD THIS
         created_at=datetime.now().isoformat()
     )
-    
-    notes_db.append(new_note)
-    note_id_counter += 1
-    save_notes()
+    ...
     return new_note
 ```
 
@@ -956,6 +961,8 @@ def get_notes_by_category(category: str):
     """Get all notes in a specific category"""
     filtered_notes = []
     
+    ... TODO load notes
+
     for note in notes_db:
         if note.category == category:
             filtered_notes.append(note)
@@ -976,6 +983,7 @@ def get_notes_by_category(category: str):
 def get_notes_stats():
     """Get statistics about notes"""
     
+    ... TODO load notes
     # Count by category
     categories = {}
     for note in notes_db:
@@ -1049,10 +1057,11 @@ def get_notes_stats():
 @app.delete("/notes/{note_id}")
 def delete_note(note_id: int):
     """Delete a note by ID"""
+    ... TODO load notes
     for i, note in enumerate(notes_db):
         if note.id == note_id:
             notes_db.pop(i)
-            save_notes()
+            save_notes(notes_db)
             return {"message": "Note deleted"}
     
     raise HTTPException(404, "Note not found")
@@ -1065,7 +1074,7 @@ def delete_note(note_id: int):
 ## 💡 Tips for Success
 
 1. **Test frequently** - Use `/docs` after each change
-2. **Check the file** - Open notes.json to see saved data
+2. **Check the file** - Open data/notes.json to see saved data
 3. **Read error messages** - They tell you exactly what's wrong
 4. **Start server fresh** - Verify persistence after restart
 5. **Ask for help** - In class or forum if stuck
@@ -1148,7 +1157,7 @@ What we learned today
 4. File persistence is simple with JSON
 5. Type hints help everyone (you, IDE, FastAPI)
 
-**Keep your notes.json file safe - it's your database!**
+**Keep your data/notes.json file safe - it's your database!**
 
 ---
 
