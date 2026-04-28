@@ -1,0 +1,6 @@
+reference-implementation/**
+
+day-*-presentation.md
+!day-01-presentation.md
+!day-02-presentation.md
+
