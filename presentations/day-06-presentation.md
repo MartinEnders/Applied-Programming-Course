@@ -52,7 +52,7 @@ Let's implement our own decorator. Create a ```class_based_decorator.py``` file.
 
 Your tests run flawless - but there are more tests...
 
-- Download the following pytest-file and add it to your repository: 
+- Download the following pytest-file and add it to your repository: https://github.com/MartinEnders/Applied-Programming-Course/blob/main/reference-implementation/test_main.py
 - Run the tests and see what happens :-)
 
 ---
@@ -76,7 +76,7 @@ Apply everything you learned!
 
 ## Task 1: Reorganize Code Structure
 
-**Get Test-Suite and run it**
+**Get [Test-Suite](https://github.com/MartinEnders/Applied-Programming-Course/blob/main/reference-implementation/test_main.py) and run it**
 
 Make all tests passing.
 
