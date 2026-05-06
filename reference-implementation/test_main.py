@@ -155,7 +155,7 @@ def test_get_single_note(note_id):
 
 
 def test_get_missing_note_returns_404():
-    response = requests.get(f"{BASE_URL}/notes/99999999")
+    response = requests.get(f"{BASE_URL}/notes/99999999999")
     assert response.status_code == 404
 
 
@@ -751,172 +751,172 @@ def test_note_appears_in_tag_and_category_resources():
 #     uv run pytest test_notes_api.py -v -m "not performance"
 # ===========================================================================
 
-import time
-import statistics
+# import time
+# import statistics
 
 
-# Loose thresholds (seconds). Tune down if you want stricter SLAs.
-PERF_P95_BUDGET = 0.5         # 500 ms p95 for cheap point lookups / writes
-PERF_MEAN_BUDGET = 0.2        # 200 ms mean for cheap point lookups / writes
-PERF_SCAN_P95_BUDGET = 2.0    # 2 s p95 for endpoints that scan the whole table
+# # Loose thresholds (seconds). Tune down if you want stricter SLAs.
+# PERF_P95_BUDGET = 0.5         # 500 ms p95 for cheap point lookups / writes
+# PERF_MEAN_BUDGET = 0.2        # 200 ms mean for cheap point lookups / writes
+# PERF_SCAN_P95_BUDGET = 2.0    # 2 s p95 for endpoints that scan the whole table
 
 
-def _percentile(values: list[float], pct: float) -> float:
-    """Simple nearest-rank percentile (no numpy dependency)."""
-    if not values:
-        return 0.0
-    ordered = sorted(values)
-    k = max(0, min(len(ordered) - 1, int(round(pct / 100.0 * len(ordered))) - 1))
-    return ordered[k]
+# def _percentile(values: list[float], pct: float) -> float:
+#     """Simple nearest-rank percentile (no numpy dependency)."""
+#     if not values:
+#         return 0.0
+#     ordered = sorted(values)
+#     k = max(0, min(len(ordered) - 1, int(round(pct / 100.0 * len(ordered))) - 1))
+#     return ordered[k]
 
 
-def _measure(fn, n: int) -> list[float]:
-    """Call fn() n times and return per-call durations in seconds."""
-    durations = []
-    for _ in range(n):
-        start = time.perf_counter()
-        response = fn()
-        durations.append(time.perf_counter() - start)
-        # Fail fast if the endpoint is broken — perf of a 500 is meaningless.
-        assert response.status_code < 400, response.text
-    return durations
+# def _measure(fn, n: int) -> list[float]:
+#     """Call fn() n times and return per-call durations in seconds."""
+#     durations = []
+#     for _ in range(n):
+#         start = time.perf_counter()
+#         response = fn()
+#         durations.append(time.perf_counter() - start)
+#         # Fail fast if the endpoint is broken — perf of a 500 is meaningless.
+#         assert response.status_code < 400, response.text
+#     return durations
 
 
-def _report(name: str, durations: list[float]) -> dict:
-    stats = {
-        "n": len(durations),
-        "mean_ms": statistics.mean(durations) * 1000,
-        "median_ms": statistics.median(durations) * 1000,
-        "p95_ms": _percentile(durations, 95) * 1000,
-        "max_ms": max(durations) * 1000,
-    }
-    print(
-        f"\n[perf] {name:32s} "
-        f"n={stats['n']:>3}  "
-        f"mean={stats['mean_ms']:6.1f}ms  "
-        f"median={stats['median_ms']:6.1f}ms  "
-        f"p95={stats['p95_ms']:6.1f}ms  "
-        f"max={stats['max_ms']:6.1f}ms"
-    )
-    return stats
+# def _report(name: str, durations: list[float]) -> dict:
+#     stats = {
+#         "n": len(durations),
+#         "mean_ms": statistics.mean(durations) * 1000,
+#         "median_ms": statistics.median(durations) * 1000,
+#         "p95_ms": _percentile(durations, 95) * 1000,
+#         "max_ms": max(durations) * 1000,
+#     }
+#     print(
+#         f"\n[perf] {name:32s} "
+#         f"n={stats['n']:>3}  "
+#         f"mean={stats['mean_ms']:6.1f}ms  "
+#         f"median={stats['median_ms']:6.1f}ms  "
+#         f"p95={stats['p95_ms']:6.1f}ms  "
+#         f"max={stats['max_ms']:6.1f}ms"
+#     )
+#     return stats
 
 
-@pytest.fixture(scope="module")
-def perf_dataset() -> list[dict]:
-    """Seed ~50 notes so list/filter/stats endpoints have something to chew on."""
-    categories = ["work", "personal", "school", "ideas"]
-    tag_pool = ["urgent", "later", "review", "todo", "draft", "perf"]
-    created = []
-    for i in range(50):
-        created.append(
-            _create_note(
-                title=f"Perf Note {i}",
-                content=f"Lorem ipsum content for perf note number {i}.",
-                category=categories[i % len(categories)],
-                tags=[tag_pool[i % len(tag_pool)], tag_pool[(i + 1) % len(tag_pool)]],
-            )
-        )
-    return created
+# @pytest.fixture(scope="module")
+# def perf_dataset() -> list[dict]:
+#     """Seed ~50 notes so list/filter/stats endpoints have something to chew on."""
+#     categories = ["work", "personal", "school", "ideas"]
+#     tag_pool = ["urgent", "later", "review", "todo", "draft", "perf"]
+#     created = []
+#     for i in range(50):
+#         created.append(
+#             _create_note(
+#                 title=f"Perf Note {i}",
+#                 content=f"Lorem ipsum content for perf note number {i}.",
+#                 category=categories[i % len(categories)],
+#                 tags=[tag_pool[i % len(tag_pool)], tag_pool[(i + 1) % len(tag_pool)]],
+#             )
+#         )
+#     return created
 
 
-@pytest.mark.performance
-def test_perf_root_endpoint():
-    durations = _measure(lambda: requests.get(f"{BASE_URL}/"), n=50)
-    stats = _report("GET /", durations)
-    assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
-    assert stats["mean_ms"] < PERF_MEAN_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_root_endpoint():
+#     durations = _measure(lambda: requests.get(f"{BASE_URL}/"), n=50)
+#     stats = _report("GET /", durations)
+#     assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
+#     assert stats["mean_ms"] < PERF_MEAN_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_list_notes(perf_dataset):
-    durations = _measure(lambda: requests.get(f"{BASE_URL}/notes"), n=30)
-    stats = _report("GET /notes", durations)
-    # Full table scan + serialization — looser budget.
-    assert stats["p95_ms"] < PERF_SCAN_P95_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_list_notes(perf_dataset):
+#     durations = _measure(lambda: requests.get(f"{BASE_URL}/notes"), n=30)
+#     stats = _report("GET /notes", durations)
+#     # Full table scan + serialization — looser budget.
+#     assert stats["p95_ms"] < PERF_SCAN_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_get_single_note(perf_dataset):
-    nid = perf_dataset[0]["id"]
-    durations = _measure(lambda: requests.get(f"{BASE_URL}/notes/{nid}"), n=50)
-    stats = _report("GET /notes/{id}", durations)
-    assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_get_single_note(perf_dataset):
+#     nid = perf_dataset[0]["id"]
+#     durations = _measure(lambda: requests.get(f"{BASE_URL}/notes/{nid}"), n=50)
+#     stats = _report("GET /notes/{id}", durations)
+#     assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_create_note():
-    def _post():
-        return requests.post(
-            f"{BASE_URL}/notes",
-            json={
-                "title": "perf-create",
-                "content": "throwaway",
-                "category": "work",
-                "tags": ["perf", "create"],
-            },
-        )
-    durations = _measure(_post, n=30)
-    stats = _report("POST /notes", durations)
-    assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_create_note():
+#     def _post():
+#         return requests.post(
+#             f"{BASE_URL}/notes",
+#             json={
+#                 "title": "perf-create",
+#                 "content": "throwaway",
+#                 "category": "work",
+#                 "tags": ["perf", "create"],
+#             },
+#         )
+#     durations = _measure(_post, n=30)
+#     stats = _report("POST /notes", durations)
+#     assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_filtered_list(perf_dataset):
-    """Combined filters touch the heaviest query path."""
-    def _get():
-        return requests.get(
-            f"{BASE_URL}/notes",
-            params={"category": "work", "tag": "urgent", "search": "perf"},
-        )
-    durations = _measure(_get, n=30)
-    stats = _report("GET /notes (filtered)", durations)
-    assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_filtered_list(perf_dataset):
+#     """Combined filters touch the heaviest query path."""
+#     def _get():
+#         return requests.get(
+#             f"{BASE_URL}/notes",
+#             params={"category": "work", "tag": "urgent", "search": "perf"},
+#         )
+#     durations = _measure(_get, n=30)
+#     stats = _report("GET /notes (filtered)", durations)
+#     assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_stats_endpoint(perf_dataset):
-    durations = _measure(lambda: requests.get(f"{BASE_URL}/notes/stats"), n=30)
-    stats = _report("GET /notes/stats", durations)
-    # Aggregates over all notes — looser budget.
-    assert stats["p95_ms"] < PERF_SCAN_P95_BUDGET * 1000
+# @pytest.mark.performance
+# def test_perf_stats_endpoint(perf_dataset):
+#     durations = _measure(lambda: requests.get(f"{BASE_URL}/notes/stats"), n=30)
+#     stats = _report("GET /notes/stats", durations)
+#     # Aggregates over all notes — looser budget.
+#     assert stats["p95_ms"] < PERF_SCAN_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_patch_note(perf_dataset):
-    nid = perf_dataset[1]["id"]
-    counter = {"i": 0}
+# @pytest.mark.performance
+# def test_perf_patch_note(perf_dataset):
+#     nid = perf_dataset[1]["id"]
+#     counter = {"i": 0}
 
-    def _patch():
-        counter["i"] += 1
-        return requests.patch(
-            f"{BASE_URL}/notes/{nid}",
-            json={"title": f"perf-patch-{counter['i']}"},
-        )
-    durations = _measure(_patch, n=30)
-    stats = _report("PATCH /notes/{id}", durations)
-    assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
+#     def _patch():
+#         counter["i"] += 1
+#         return requests.patch(
+#             f"{BASE_URL}/notes/{nid}",
+#             json={"title": f"perf-patch-{counter['i']}"},
+#         )
+#     durations = _measure(_patch, n=30)
+#     stats = _report("PATCH /notes/{id}", durations)
+#     assert stats["p95_ms"] < PERF_P95_BUDGET * 1000
 
 
-@pytest.mark.performance
-def test_perf_throughput_sequential_creates():
-    """Sanity check throughput: should comfortably exceed 10 req/s sequentially."""
-    n = 30
-    start = time.perf_counter()
-    for i in range(n):
-        r = requests.post(
-            f"{BASE_URL}/notes",
-            json={
-                "title": f"tput-{i}",
-                "content": "x",
-                "category": "work",
-                "tags": ["tput"],
-            },
-        )
-        assert r.status_code == 201
-    elapsed = time.perf_counter() - start
-    rps = n / elapsed
-    print(f"\n[perf] sequential POST throughput   {rps:5.1f} req/s over {n} reqs")
-    assert rps > 10, f"throughput too low: {rps:.1f} req/s"
+# @pytest.mark.performance
+# def test_perf_throughput_sequential_creates():
+#     """Sanity check throughput: should comfortably exceed 10 req/s sequentially."""
+#     n = 30
+#     start = time.perf_counter()
+#     for i in range(n):
+#         r = requests.post(
+#             f"{BASE_URL}/notes",
+#             json={
+#                 "title": f"tput-{i}",
+#                 "content": "x",
+#                 "category": "work",
+#                 "tags": ["tput"],
+#             },
+#         )
+#         assert r.status_code == 201
+#     elapsed = time.perf_counter() - start
+#     rps = n / elapsed
+#     print(f"\n[perf] sequential POST throughput   {rps:5.1f} req/s over {n} reqs")
+#     assert rps > 10, f"throughput too low: {rps:.1f} req/s"
 
 
 

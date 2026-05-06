@@ -45,6 +45,9 @@ Wrap functions and change how they behave.
 
 Let's implement our own decorator. Create a ```class_based_decorator.py``` file.
 
+Tipp: Use icecream: ```uv add icecream```
+
+Documentation: https://github.com/gruns/icecream
 
 ---
 
@@ -74,7 +77,7 @@ Apply everything you learned!
 
 ---
 
-## Task 1: Reorganize Code Structure
+## Task 1: Pass Test-Suite
 
 **Get [Test-Suite](https://github.com/MartinEnders/Applied-Programming-Course/blob/main/reference-implementation/test_main.py) and run it**
 
@@ -82,24 +85,9 @@ Make all tests passing.
 
 ---
 
-## Task 2: Add Comprehensive Error Handling
+## Task 2: Catch up with your implementation
 
-**Catch up if you are behind**:
-
-- API Endpoints
-- Database Backend
-- Pydantic Validation
-
-Tipp for imports:
-
-```Field``` class exisits in sqlmodel and pydantic. See at the following code snippet how to deal with same names:
-
-```
-from pydantic import BaseModel, field_validator, model_validator, ConfigDict, Field as PydanticField
-from sqlmodel import SQLModel, Field as SQLField, Session, create_engine, select, or_, col, Relationship
-```
-
-Afterwards you have to update the class-names within your code.
+e.g., Validation, Database Backend, ... (prior homework)
 
 ---
 
